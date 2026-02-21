@@ -86,9 +86,9 @@ async function startServer() {
   });
 
   app.put("/api/user/profile", authenticateToken, (req: any, res) => {
-    const { age, gender, weight, height, activity_level, target_calories } = req.body;
-    db.prepare("UPDATE users SET age = ?, gender = ?, weight = ?, height = ?, activity_level = ?, target_calories = ? WHERE id = ?")
-      .run(age, gender, weight, height, activity_level, target_calories, req.user.id);
+    const { name, age, gender, weight, height, activity_level, target_calories } = req.body;
+    db.prepare("UPDATE users SET name = ?, age = ?, gender = ?, weight = ?, height = ?, activity_level = ?, target_calories = ? WHERE id = ?")
+      .run(name, age, gender, weight, height, activity_level, target_calories, req.user.id);
     res.json({ success: true });
   });
 

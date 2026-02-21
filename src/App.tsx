@@ -226,10 +226,10 @@ const Onboarding = ({ user, onUpdate }: { user: User, onUpdate: (u: User) => voi
   );
 };
 
-const Dashboard = ({ user, logs, onAddLog, theme, onToggleTheme }: { user: User, logs: CalorieLog[], onAddLog: (log: any) => void, theme: string, onToggleTheme: () => void }) => {
+const Dashboard = ({ user, logs, onAddLog, theme, onToggleTheme, onLogout, onUpdateUser }: { user: User, logs: CalorieLog[], onAddLog: (log: any) => void, theme: string, onToggleTheme: () => void, onLogout: () => void, onUpdateUser: (u: User) => void }) => {
   const [showAdd, setShowAdd] = useState(false);
   const [showChat, setShowChat] = useState(false);
-  const [showCamera, setShowCamera] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [foodName, setFoodName] = useState('');
   const [calories, setCalories] = useState('');
   const [loading, setLoading] = useState(false);
@@ -306,12 +306,24 @@ const Dashboard = ({ user, logs, onAddLog, theme, onToggleTheme }: { user: User,
           <button 
             onClick={onToggleTheme}
             className="w-10 h-10 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)] flex items-center justify-center hover:opacity-80 transition-all"
+            title="Toggle Theme"
           >
             {theme === 'dark' ? <Sun size={20} className="text-orange-400" /> : <Moon size={20} className="text-slate-600" />}
           </button>
-          <div className="w-10 h-10 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)] flex items-center justify-center">
+          <button 
+            onClick={() => setShowProfile(true)}
+            className="w-10 h-10 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)] flex items-center justify-center hover:opacity-80 transition-all"
+            title="Profile"
+          >
             <UserIcon size={20} />
-          </div>
+          </button>
+          <button 
+            onClick={onLogout}
+            className="w-10 h-10 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border-color)] flex items-center justify-center hover:opacity-80 transition-all text-red-500"
+            title="Logout"
+          >
+            <LogOut size={20} />
+          </button>
         </div>
       </div>
 
@@ -473,6 +485,33 @@ const Dashboard = ({ user, logs, onAddLog, theme, onToggleTheme }: { user: User,
         )}
       </AnimatePresence>
 
+      {/* Profile Modal */}
+      <AnimatePresence>
+        {showProfile && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowProfile(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="card w-full max-w-lg rounded-[32px] relative z-10 overflow-hidden"
+            >
+              <div className="p-6 border-b border-[var(--border-color)] flex justify-between items-center bg-[var(--bg-secondary)]">
+                <h2 className="text-xl font-bold">Edit Profile</h2>
+                <button onClick={() => setShowProfile(false)} className="p-2 hover:opacity-80 rounded-full">
+                  <X size={24} />
+                </button>
+              </div>
+              <div className="p-6">
+                <ProfileForm user={user} onUpdate={(u) => { onUpdateUser(u); setShowProfile(false); }} />
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-md">
@@ -482,6 +521,71 @@ const Dashboard = ({ user, logs, onAddLog, theme, onToggleTheme }: { user: User,
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+const ProfileForm = ({ user, onUpdate }: { user: User, onUpdate: (u: User) => void }) => {
+  const [name, setName] = useState(user.name);
+  const [age, setAge] = useState(user.age || 25);
+  const [gender, setGender] = useState(user.gender || 'male');
+  const [weight, setWeight] = useState(user.weight || 70);
+  const [height, setHeight] = useState(user.height || 175);
+  const [activity, setActivity] = useState(user.activity_level || 'moderate');
+  const [loading, setLoading] = useState(false);
+
+  const calculateTarget = () => {
+    let bmr = (10 * weight) + (6.25 * height) - (5 * age);
+    bmr = gender === 'male' ? bmr + 5 : bmr - 161;
+    const multipliers: any = { sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9 };
+    return Math.round(bmr * multipliers[activity]);
+  };
+
+  const handleSave = async () => {
+    setLoading(true);
+    const target = calculateTarget();
+    const res = await fetch('/api/user/profile', {
+      method: 'PUT',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ name, age, gender, weight, height, activity_level: activity, target_calories: target }),
+    });
+    if (res.ok) {
+      onUpdate({ ...user, name, age, gender, weight, height, activity_level: activity, target_calories: target });
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="flex flex-col gap-4">
+      <Input label="Name" value={name} onChange={(e: any) => setName(e.target.value)} />
+      <div className="grid grid-cols-2 gap-4">
+        <Input label="Age" type="number" value={age} onChange={(e: any) => setAge(Number(e.target.value))} />
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-medium opacity-60 ml-1">Gender</label>
+          <select className="input-field" value={gender} onChange={(e) => setGender(e.target.value)}>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+          </select>
+        </div>
+        <Input label="Weight (kg)" type="number" value={weight} onChange={(e: any) => setWeight(Number(e.target.value))} />
+        <Input label="Height (cm)" type="number" value={height} onChange={(e: any) => setHeight(Number(e.target.value))} />
+      </div>
+      <div className="flex flex-col gap-2">
+        <label className="text-sm font-medium opacity-60 ml-1">Activity Level</label>
+        <select className="input-field" value={activity} onChange={(e) => setActivity(e.target.value)}>
+          <option value="sedentary">Sedentary</option>
+          <option value="light">Lightly Active</option>
+          <option value="moderate">Moderately Active</option>
+          <option value="active">Active</option>
+          <option value="very_active">Very Active</option>
+        </select>
+      </div>
+      <button onClick={handleSave} className="btn-primary w-full mt-4" disabled={loading}>
+        {loading ? <Loader2 className="animate-spin mx-auto" /> : 'Save Changes'}
+      </button>
     </div>
   );
 };
@@ -630,6 +734,8 @@ export default function App() {
               onAddLog={(log) => setLogs([log, ...logs])} 
               theme={theme}
               onToggleTheme={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              onLogout={handleLogout}
+              onUpdateUser={setUser}
             />
           ) : (
             <Navigate to="/onboarding" />
