@@ -1,0 +1,5 @@
+{
+  "name": "CaloGlass - AI Calorie Tracker",
+  "description": "A minimalist, glassmorphic calorie tracker with AI-powered food analysis and personalized health insights.",
+  "requestFramePermissions": ["camera"]
+}
